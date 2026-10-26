@@ -40,6 +40,7 @@ class FakeStore:
 
 class FakeService:
     def __init__(self):
+        self.logged = []
         self.source = TrustedSource(
             source_id="uhc-mri",
             payer="UHC",
@@ -117,6 +118,9 @@ class FakeService:
 
     def get_recent_policy_changes(self, limit=25):
         return self.store.records[:limit]
+
+    def log_event(self, event_type, payload):
+        self.logged.append((event_type, payload))
 
 
 def test_schema_rejects_unknown_or_unbounded_arguments():

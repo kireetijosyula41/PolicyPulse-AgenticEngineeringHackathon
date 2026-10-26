@@ -70,6 +70,28 @@ class ClinicalRelevanceArgs(StrictModel):
     watch_id: str | None = Field(default=None, max_length=128)
 
 
+class InvestigationRequest(StrictModel):
+    investigation_id: str = Field(min_length=1, max_length=128)
+    trigger_kind: str = Field(min_length=1, max_length=64)
+    authorized_policy_sources: list[str] = Field(min_length=1, max_length=50)
+    policy_change_id: str = Field(min_length=1, max_length=128)
+    clinical_event_reference: str | None = Field(default=None, max_length=128)
+    validated_clinical_event: ClinicalRelevanceInput | None = None
+    question: str = Field(min_length=1, max_length=2000)
+    requested_skill: str | None = Field(default=None, max_length=128)
+    max_tool_calls: int = Field(default=8, ge=1, le=8)
+    execution_deadline_seconds: float = Field(default=30.0, gt=0.1, le=300.0)
+    token_budget: int = Field(default=4000, ge=100, le=20000)
+
+
+class InvestigationAuthContext(ToolAuthContext):
+    investigation_id: str = Field(min_length=1, max_length=128)
+    trigger_kind: str = Field(min_length=1, max_length=64)
+    authorized_policy_change_id: str = Field(min_length=1, max_length=128)
+    clinical_event_reference: str | None = Field(default=None, max_length=128)
+    validated_clinical_event: ClinicalRelevanceInput | None = None
+
+
 class DocumentationChecklistArgs(StrictModel):
     clinical_trigger: ClinicalRelevanceInput
     watch_id: str = Field(min_length=1, max_length=128)
@@ -111,6 +133,37 @@ class RecentPolicyChangesResponse(StrictModel):
 
 class RecentAuditEventsResponse(StrictModel):
     items: list[AuditEvent] = Field(max_length=100)
+
+
+class InvestigationReport(StrictModel):
+    investigation_id: str
+    status: Literal["complete", "insufficient_evidence", "error"]
+    answer: str = Field(max_length=5000)
+    source_ids: list[str] = Field(max_length=50)
+    observations: list[str] = Field(max_length=50)
+    hypotheses: list[str] = Field(max_length=50)
+    uncertainty: list[str] = Field(max_length=50)
+    next_steps: list[str] = Field(max_length=50)
+    tool_call_count: int = Field(ge=0, le=8)
+
+
+class InvestigationToolCall(StrictModel):
+    call_id: str
+    tool_name: str
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    result: dict[str, Any] | None = None
+    duration_ms: int = Field(default=0, ge=0)
+    outcome: Literal["success", "error", "rejected"]
+    error_code: str | None = None
+
+
+class InvestigationRun(StrictModel):
+    report: InvestigationReport
+    tool_calls: list[InvestigationToolCall] = Field(max_length=8)
+    provider: Literal["openai", "fixture"]
+    model: str
+    skill_name: str | None = None
+    skill_version: str | None = None
 
 
 ToolErrorCode = Literal[

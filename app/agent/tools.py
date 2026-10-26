@@ -11,6 +11,7 @@ from .schemas import (
     ClinicalRelevanceResponse,
     DocumentationChecklistArgs,
     DocumentationChecklistResponse,
+    InvestigationAuthContext,
     ListTrustedPolicySourcesArgs,
     PolicyChangeArgs,
     PolicyDiffArgs,
@@ -31,6 +32,18 @@ def _check_scope(context: ToolAuthContext) -> None:
 def _check_source(context: ToolAuthContext, source_id: str) -> None:
     if source_id not in context.allowed_source_ids:
         raise PermissionError(f"Source {source_id!r} is not allowlisted for this principal")
+
+
+def _check_policy_change(context: ToolAuthContext, watch_id: str) -> None:
+    authorized = getattr(context, "authorized_policy_change_id", None)
+    if authorized and authorized != watch_id:
+        raise PermissionError(f"Policy change {watch_id!r} is outside the investigation authorization")
+
+
+def _check_clinical_event(context: ToolAuthContext, value) -> None:
+    trusted = getattr(context, "validated_clinical_event", None)
+    if trusted is not None and value != trusted:
+        raise PermissionError("Clinical event arguments do not match the validated event supplied by the application")
 
 
 def _clinical_trigger(value) -> ClinicalTriggerEvent:
@@ -61,6 +74,7 @@ def list_trusted_policy_sources(
 
 def get_policy_change(service, args: PolicyChangeArgs, context: ToolAuthContext) -> ActivePolicyChange:
     _check_scope(context)
+    _check_policy_change(context, args.watch_id)
     for item in _active_changes(service, context):
         if item.watch_id == args.watch_id:
             return item.model_copy(
@@ -119,6 +133,9 @@ def evaluate_clinical_relevance(
     service, args: ClinicalRelevanceArgs, context: ToolAuthContext
 ) -> ClinicalRelevanceResponse:
     _check_scope(context)
+    _check_clinical_event(context, args.clinical_trigger)
+    if args.watch_id:
+        _check_policy_change(context, args.watch_id)
     trigger = _clinical_trigger(args.clinical_trigger)
     candidates = _active_changes(service, context)
     if args.watch_id:
@@ -136,6 +153,8 @@ def get_documentation_checklist(
     service, args: DocumentationChecklistArgs, context: ToolAuthContext
 ) -> DocumentationChecklistResponse:
     _check_scope(context)
+    _check_clinical_event(context, args.clinical_trigger)
+    _check_policy_change(context, args.watch_id)
     trigger = _clinical_trigger(args.clinical_trigger)
     change = get_policy_change(service, PolicyChangeArgs(watch_id=args.watch_id), context)
     decision = evaluate_crd_opportunity(trigger, [change])
