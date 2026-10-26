@@ -1,0 +1,19 @@
+{
+  "hook": "order-sign",
+  "context": {
+    "payer": "UnitedHealthcare",
+    "plan": "Commercial",
+    "procedure": "MRI lumbar spine without contrast",
+    "procedure_codes": ["72148"],
+    "provider_action": "signing advanced imaging order",
+    "patient_context": {
+      "encounter_id": "enc-301",
+      "patient_id": "pt-2001",
+      "doctor_id": "dr-uhc-02",
+      "diagnosis": "Lumbar disc herniation with bilateral radiculopathy — conservative therapy completed 4 weeks, requesting advanced imaging for surgical evaluation",
+      "prior_auth_status": "not_submitted",
+      "conservative_therapy_weeks": 4,
+      "prior_imaging": "none"
+    }
+  }
+}
